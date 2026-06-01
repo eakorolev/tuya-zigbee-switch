@@ -37,6 +37,13 @@ def button_pins() -> list[str]:
     return ["A0", "A1"]
 
 
+@pytest.fixture(autouse=True)
+def detached_long_press_eps(device: Device):
+    # 2 switches, 0 relays => long_press_eps[0..1] = ep3, ep4
+    for ep in [3, 4]:
+        device.zcl_switch_relay_mode_set(ep, ZCL_ONOFF_CONFIGURATION_RELAY_MODE_DETACHED)
+
+
 def test_boots_without_crash(device: Device):
     """Device with switches but no relays boots and basic cluster is readable."""
     assert device.read_zigbee_attr(1, ZCL_CLUSTER_BASIC, ZCL_ATTR_BASIC_MFR_NAME) is not None

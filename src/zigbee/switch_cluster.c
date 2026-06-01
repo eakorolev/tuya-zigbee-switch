@@ -11,9 +11,10 @@
 #include "relay_cluster.h"
 #include "zigbee_commands.h"
 
-const uint8_t  multistate_out_of_service = 0;
-const uint8_t  multistate_flags          = 0;
-const uint16_t multistate_num_of_states  = 3;
+const uint8_t  multistate_out_of_service     = 0;
+const uint8_t  multistate_flags              = 0;
+const uint16_t multistate_num_of_states      = 3;
+const uint8_t  long_cluster_binded_mode_long = ZCL_ONOFF_CONFIGURATION_BINDED_MODE_LONG;
 
 #define MULTISTATE_NOT_PRESSED     0
 #define MULTISTATE_PRESS           1
@@ -30,7 +31,8 @@ void switch_cluster_on_button_press(zigbee_switch_cluster *cluster);
 void switch_cluster_on_button_release(zigbee_switch_cluster *cluster);
 void switch_cluster_on_button_long_press(zigbee_switch_cluster *cluster);
 
-zigbee_switch_cluster *switch_cluster_by_endpoint[10];
+zigbee_switch_cluster *     switch_cluster_by_endpoint[16];
+zigbee_switch_long_cluster *switch_long_cluster_by_endpoint[16];
 
 static bool relay_index_is_valid(uint8_t relay_index) {
     return relay_index > 0 && relay_index <= relay_clusters_cnt;
@@ -75,13 +77,23 @@ void switch_cluster_store_attrs_to_nv(zigbee_switch_cluster *cluster);
 void switch_cluster_load_attrs_from_nv(zigbee_switch_cluster *cluster);
 void switch_cluster_on_write_attr(zigbee_switch_cluster *cluster,
                                   uint16_t attribute_id);
+void switch_long_cluster_store_attrs_to_nv(zigbee_switch_long_cluster *cluster);
+void switch_long_cluster_load_attrs_from_nv(zigbee_switch_long_cluster *cluster);
+void switch_long_cluster_on_write_attr(zigbee_switch_long_cluster *cluster,
+                                       uint16_t attribute_id);
 
 void switch_cluster_report_action(zigbee_switch_cluster *cluster);
 
 void switch_cluster_callback_attr_write_trampoline(uint8_t endpoint,
                                                    uint16_t attribute_id) {
-    switch_cluster_on_write_attr(switch_cluster_by_endpoint[endpoint],
-                                 attribute_id);
+    if (switch_cluster_by_endpoint[endpoint] != NULL) {
+        switch_cluster_on_write_attr(switch_cluster_by_endpoint[endpoint],
+                                     attribute_id);
+    } else {
+        switch_long_cluster_on_write_attr(
+            switch_long_cluster_by_endpoint[endpoint],
+            attribute_id);
+    }
 }
 
 void switch_cluster_add_to_endpoint(zigbee_switch_cluster *cluster,
@@ -498,4 +510,118 @@ void switch_cluster_load_attrs_from_nv(zigbee_switch_cluster *cluster) {
                cluster->relay_index);
         cluster->relay_index = cluster->switch_idx + 1;
     }
+}
+
+void switch_long_cluster_add_to_endpoint(zigbee_switch_long_cluster *cluster,
+                                         hal_zigbee_endpoint *endpoint) {
+    switch_long_cluster_by_endpoint[endpoint->endpoint] = cluster;
+    cluster->endpoint = endpoint->endpoint;
+    switch_long_cluster_load_attrs_from_nv(cluster);
+
+    SETUP_ATTR(0, ZCL_ATTR_ONOFF_CONFIGURATION_SWITCH_TYPE, ZCL_DATA_TYPE_ENUM8,
+               ATTR_READONLY, switch_clusters[cluster->switch_idx].mode);
+    SETUP_ATTR(1, ZCL_ATTR_ONOFF_CONFIGURATION_SWITCH_ACTIONS,
+               ZCL_DATA_TYPE_ENUM8, ATTR_WRITABLE, cluster->action);
+    SETUP_ATTR(2, ZCL_ATTR_ONOFF_CONFIGURATION_SWITCH_BINDING_MODE,
+               ZCL_DATA_TYPE_ENUM8, ATTR_READONLY,
+               long_cluster_binded_mode_long);
+    SETUP_ATTR(3, ZCL_ATTR_ONOFF_CONFIGURATION_SWITCH_RELAY_MODE,
+               ZCL_DATA_TYPE_ENUM8, ATTR_WRITABLE, cluster->relay_mode);
+    SETUP_ATTR(4, ZCL_ATTR_ONOFF_CONFIGURATION_SWITCH_RELAY_INDEX,
+               ZCL_DATA_TYPE_UINT8, ATTR_WRITABLE, cluster->relay_index);
+    SETUP_ATTR(5, ZCL_ATTR_ONOFF_CONFIGURATION_SWITCH_MOVE_COMMAND,
+               ZCL_DATA_TYPE_ENUM8, ATTR_WRITABLE, cluster->move_command);
+    SETUP_ATTR(6, ZCL_ATTR_ONOFF_CONFIGURATION_SWITCH_LEVEL_MOVE_DIRECTION,
+               ZCL_DATA_TYPE_ENUM8, ATTR_WRITABLE,
+               cluster->level_move_direction);
+    SETUP_ATTR(7, ZCL_ATTR_ONOFF_CONFIGURATION_SWITCH_LEVEL_MOVE_RATE,
+               ZCL_DATA_TYPE_UINT8, ATTR_WRITABLE, cluster->level_move_rate);
+
+    endpoint->clusters[endpoint->cluster_count].cluster_id =
+        ZCL_CLUSTER_ON_OFF_SWITCH_CONFIG;
+    endpoint->clusters[endpoint->cluster_count].attribute_count = 8;
+    endpoint->clusters[endpoint->cluster_count].attributes      =
+        cluster->attr_infos;
+    endpoint->clusters[endpoint->cluster_count].is_server = 1;
+    endpoint->cluster_count++;
+
+    endpoint->clusters[endpoint->cluster_count].cluster_id      = ZCL_CLUSTER_ON_OFF;
+    endpoint->clusters[endpoint->cluster_count].attribute_count = 0;
+    endpoint->clusters[endpoint->cluster_count].attributes      = NULL;
+    endpoint->clusters[endpoint->cluster_count].is_server       = 0;
+    endpoint->cluster_count++;
+
+    endpoint->clusters[endpoint->cluster_count].cluster_id =
+        ZCL_CLUSTER_LEVEL_CONTROL;
+    endpoint->clusters[endpoint->cluster_count].attribute_count = 0;
+    endpoint->clusters[endpoint->cluster_count].attributes      = NULL;
+    endpoint->clusters[endpoint->cluster_count].is_server       = 0;
+    endpoint->cluster_count++;
+}
+
+void switch_long_cluster_on_write_attr(zigbee_switch_long_cluster *cluster,
+                                       uint16_t attribute_id) {
+    printf("Index at write attr (long): %d\r\n", cluster->switch_idx);
+    if (attribute_id == ZCL_ATTR_ONOFF_CONFIGURATION_SWITCH_RELAY_INDEX) {
+        if (relay_clusters_cnt == 0) {
+            cluster->relay_index = 0;
+        } else if (cluster->relay_index < 1 || cluster->relay_index > relay_clusters_cnt) {
+            cluster->relay_index = 1;
+        }
+    }
+    if (attribute_id == ZCL_ATTR_ONOFF_CONFIGURATION_SWITCH_RELAY_MODE) {
+        if (cluster->relay_mode != ZCL_ONOFF_CONFIGURATION_RELAY_MODE_DETACHED &&
+            cluster->relay_mode != ZCL_ONOFF_CONFIGURATION_RELAY_MODE_LONG) {
+            cluster->relay_mode = ZCL_ONOFF_CONFIGURATION_RELAY_MODE_DETACHED;
+        }
+    }
+    if (attribute_id == ZCL_ATTR_ONOFF_CONFIGURATION_SWITCH_MOVE_COMMAND) {
+        if (cluster->move_command != ZCL_CMD_LEVEL_MOVE &&
+            cluster->move_command != ZCL_CMD_LEVEL_MOVE_WITH_ON_OFF) {
+            cluster->move_command = ZCL_CMD_LEVEL_MOVE_WITH_ON_OFF;
+        }
+    }
+    if (attribute_id ==
+        ZCL_ATTR_ONOFF_CONFIGURATION_SWITCH_LEVEL_MOVE_DIRECTION) {
+        if (cluster->level_move_direction != ZCL_LEVEL_MOVE_UP &&
+            cluster->level_move_direction != ZCL_LEVEL_MOVE_DOWN &&
+            cluster->level_move_direction !=
+            ZCL_LEVEL_MOVE_DIRECTION_ALTERNATE) {
+            cluster->level_move_direction =
+                ZCL_LEVEL_MOVE_DIRECTION_ALTERNATE;
+        }
+    }
+    switch_long_cluster_store_attrs_to_nv(cluster);
+}
+
+zigbee_switch_long_cluster_config nv_long_config_buffer;
+
+void switch_long_cluster_store_attrs_to_nv(
+    zigbee_switch_long_cluster *cluster) {
+    nv_long_config_buffer.action               = cluster->action;
+    nv_long_config_buffer.relay_mode           = cluster->relay_mode;
+    nv_long_config_buffer.relay_index          = cluster->relay_index;
+    nv_long_config_buffer.move_command         = cluster->move_command;
+    nv_long_config_buffer.level_move_direction = cluster->level_move_direction;
+    nv_long_config_buffer.level_move_rate      = cluster->level_move_rate;
+    hal_nvm_write(NV_ITEM_SWITCH_LONG_CLUSTER_DATA(cluster->switch_idx),
+                  sizeof(zigbee_switch_long_cluster_config),
+                  (uint8_t *)&nv_long_config_buffer);
+}
+
+void switch_long_cluster_load_attrs_from_nv(zigbee_switch_long_cluster *cluster) {
+    hal_nvm_status_t st = hal_nvm_read(
+        NV_ITEM_SWITCH_LONG_CLUSTER_DATA(cluster->switch_idx),
+        sizeof(zigbee_switch_long_cluster_config), (uint8_t *)&nv_long_config_buffer);
+
+    if (st != HAL_NVM_SUCCESS) {
+        printf("No switch long config in NV, using defaults\r\n");
+        return;
+    }
+    cluster->action               = nv_long_config_buffer.action;
+    cluster->relay_mode           = nv_long_config_buffer.relay_mode;
+    cluster->relay_index          = nv_long_config_buffer.relay_index;
+    cluster->move_command         = nv_long_config_buffer.move_command;
+    cluster->level_move_direction = nv_long_config_buffer.level_move_direction;
+    cluster->level_move_rate      = nv_long_config_buffer.level_move_rate;
 }

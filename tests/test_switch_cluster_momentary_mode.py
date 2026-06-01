@@ -37,6 +37,10 @@ def momentary_device(device: Device, relay_button_pair: RelayButtonPair) -> Devi
     device.zcl_switch_mode_set(
         relay_button_pair.switch_endpoint, ZCL_ONOFF_CONFIGURATION_SWITCH_TYPE_MOMENTARY
     )
+    device.zcl_switch_relay_mode_set(
+        relay_button_pair.long_press_endpoint,
+        ZCL_ONOFF_CONFIGURATION_RELAY_MODE_DETACHED,
+    )
     return device
 
 
@@ -509,6 +513,15 @@ def test_momentary_mode_relay_index_invalid_values(
     momentary_device.click_button(relay_button_pair.button_pin)
 
     momentary_device.step_time(100)
+
+    # Out-of-range writes clamp to a valid relay_index (>= 1, <= relay_clusters_cnt).
+    clamped = int(momentary_device.read_zigbee_attr(
+        relay_button_pair.switch_endpoint,
+        ZCL_CLUSTER_ON_OFF_SWITCH_CONFIG,
+        ZCL_ATTR_ONOFF_CONFIGURATION_SWITCH_RELAY_INDEX,
+    ))
+    assert clamped != invalid_relay_index
+    assert 1 <= clamped
 
 
 # Test multistate state
