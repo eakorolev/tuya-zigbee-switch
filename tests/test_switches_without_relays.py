@@ -110,11 +110,6 @@ def test_button_press_no_crash(device: Device, button_pins: list[str]):
             lambda d, pin: d.click_button(pin),
             id="short",
         ),
-        pytest.param(
-            ZCL_ONOFF_CONFIGURATION_BINDED_MODE_LONG,
-            lambda d, pin: d.long_click_button(pin, duration_ms=1000),
-            id="long",
-        ),
     ],
 )
 def test_binding_commands_still_sent(
@@ -125,13 +120,47 @@ def test_binding_commands_still_sent(
     action: int,
     expected_cmd: int,
 ):
-    """All binded_modes × SwitchActions emit the right OnOff command on press."""
+    """`binded_mode=RISE|SHORT` × SwitchActions emit the right OnOff command on
+    the corresponding edge."""
     device.zcl_switch_mode_set(1, ZCL_ONOFF_CONFIGURATION_SWITCH_TYPE_MOMENTARY)
     device.zcl_switch_binding_mode_set(1, binded_mode)
     device.zcl_switch_actions_set(1, action)
     device.set_network(1)
     device.clear_events()
     trigger(device, button_pins[0])
+    device.wait_for_cmd_send(1, ZCL_CLUSTER_ON_OFF, expected_cmd)
+
+
+@pytest.mark.parametrize(
+    "action,expected_cmd",
+    [
+        pytest.param(
+            ZCL_ONOFF_CONFIGURATION_SWITCH_ACTION_TOGGLE_SIMPLE,
+            ZCL_CMD_ONOFF_TOGGLE,
+            id="toggle",
+        ),
+        pytest.param(
+            ZCL_ONOFF_CONFIGURATION_SWITCH_ACTION_ONOFF, ZCL_CMD_ONOFF_ON, id="on"
+        ),
+        pytest.param(
+            ZCL_ONOFF_CONFIGURATION_SWITCH_ACTION_OFFON, ZCL_CMD_ONOFF_OFF, id="off"
+        ),
+    ],
+)
+def test_binding_commands_still_sent_long_deprecated(
+    device: Device,
+    button_pins: list[str],
+    action: int,
+    expected_cmd: int,
+):
+    """DEPRECATED: `binded_mode=LONG` on switch_ep — long-press binding lives
+    on the dedicated long-press endpoint."""
+    device.zcl_switch_mode_set(1, ZCL_ONOFF_CONFIGURATION_SWITCH_TYPE_MOMENTARY)
+    device.zcl_switch_binding_mode_set(1, ZCL_ONOFF_CONFIGURATION_BINDED_MODE_LONG)
+    device.zcl_switch_actions_set(1, action)
+    device.set_network(1)
+    device.clear_events()
+    device.long_click_button(button_pins[0], duration_ms=1000)
     device.wait_for_cmd_send(1, ZCL_CLUSTER_ON_OFF, expected_cmd)
 
 
@@ -155,11 +184,6 @@ def test_binding_commands_still_sent(
             lambda d, pin: d.click_button(pin),
             id="short",
         ),
-        pytest.param(
-            ZCL_ONOFF_CONFIGURATION_BINDED_MODE_LONG,
-            lambda d, pin: d.long_click_button(pin),
-            id="long",
-        ),
     ],
 )
 def test_smart_sync_degrades_to_toggle(
@@ -169,13 +193,35 @@ def test_smart_sync_degrades_to_toggle(
     trigger,
     action: int,
 ):
-    """Without a valid relay, SmartSync/SmartOpposite falls back to plain Toggle."""
+    """Without a valid relay, SmartSync/SmartOpposite falls back to plain Toggle
+    on RISE/SHORT."""
     device.zcl_switch_mode_set(1, ZCL_ONOFF_CONFIGURATION_SWITCH_TYPE_MOMENTARY)
     device.zcl_switch_binding_mode_set(1, binded_mode)
     device.zcl_switch_actions_set(1, action)
     device.set_network(1)
     device.clear_events()
     trigger(device, button_pins[0])
+    device.wait_for_cmd_send(1, ZCL_CLUSTER_ON_OFF, ZCL_CMD_ONOFF_TOGGLE)
+
+
+@pytest.mark.parametrize(
+    "action",
+    [
+        pytest.param(ZCL_ONOFF_CONFIGURATION_SWITCH_ACTION_TOGGLE_SMART_SYNC, id="sync"),
+        pytest.param(ZCL_ONOFF_CONFIGURATION_SWITCH_ACTION_TOGGLE_SMART_OPPOSITE, id="opposite"),
+    ],
+)
+def test_smart_sync_degrades_to_toggle_long_deprecated(
+    device: Device, button_pins: list[str], action: int,
+):
+    """DEPRECATED: `binded_mode=LONG` on switch_ep — long-press binding lives
+    on the dedicated long-press endpoint."""
+    device.zcl_switch_mode_set(1, ZCL_ONOFF_CONFIGURATION_SWITCH_TYPE_MOMENTARY)
+    device.zcl_switch_binding_mode_set(1, ZCL_ONOFF_CONFIGURATION_BINDED_MODE_LONG)
+    device.zcl_switch_actions_set(1, action)
+    device.set_network(1)
+    device.clear_events()
+    device.long_click_button(button_pins[0], duration_ms=1000)
     device.wait_for_cmd_send(1, ZCL_CLUSTER_ON_OFF, ZCL_CMD_ONOFF_TOGGLE)
 
 
