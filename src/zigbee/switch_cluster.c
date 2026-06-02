@@ -26,6 +26,8 @@ extern zigbee_relay_cluster relay_clusters[];
 extern uint8_t relay_clusters_cnt;
 extern zigbee_switch_cluster switch_clusters[];
 extern uint8_t switch_clusters_cnt;
+extern zigbee_switch_long_cluster switch_long_clusters[];
+extern uint8_t switch_long_clusters_cnt;
 
 void switch_cluster_on_button_press(zigbee_switch_cluster *cluster);
 void switch_cluster_on_button_release(zigbee_switch_cluster *cluster);
@@ -33,6 +35,18 @@ void switch_cluster_on_button_long_press(zigbee_switch_cluster *cluster);
 
 zigbee_switch_cluster *     switch_cluster_by_endpoint[16];
 zigbee_switch_long_cluster *switch_long_cluster_by_endpoint[16];
+
+// Returns the long_press_ep paired with this switch_ep, or NULL if switch_ep
+// is in deprecated LONG mode (which mutes long_press_ep entirely).
+static zigbee_switch_long_cluster *get_long_press_cluster(
+    const zigbee_switch_cluster *cluster) {
+    if (cluster->switch_idx < switch_long_clusters_cnt &&
+        cluster->relay_mode != ZCL_ONOFF_CONFIGURATION_RELAY_MODE_LONG &&
+        cluster->binded_mode != ZCL_ONOFF_CONFIGURATION_BINDED_MODE_LONG) {
+        return &switch_long_clusters[cluster->switch_idx];
+    }
+    return NULL;
+}
 
 static bool relay_index_is_valid(uint8_t relay_index) {
     return relay_index > 0 && relay_index <= relay_clusters_cnt;
@@ -407,9 +421,17 @@ void switch_cluster_on_button_long_press(zigbee_switch_cluster *cluster) {
         return;
     }
 
+    zigbee_switch_long_cluster *long_cluster = get_long_press_cluster(cluster);
+
     if (cluster->relay_mode == ZCL_ONOFF_CONFIGURATION_RELAY_MODE_LONG) {
         if (relay_index_is_valid(cluster->relay_index)) {
             relay_cluster_toggle(&relay_clusters[cluster->relay_index - 1]);
+        }
+    }
+    if (long_cluster != NULL &&
+        long_cluster->relay_mode == ZCL_ONOFF_CONFIGURATION_RELAY_MODE_LONG) {
+        if (relay_index_is_valid(long_cluster->relay_index)) {
+            relay_cluster_toggle(&relay_clusters[long_cluster->relay_index - 1]);
         }
     }
 
