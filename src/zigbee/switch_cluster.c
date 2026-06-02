@@ -245,8 +245,6 @@ void switch_cluster_relay_action_off(zigbee_switch_cluster *cluster) {
     }
 }
 
-// Resolve `action` to a ZCL OnOff command id and emit it to bindings.
-// `relay_index` selects the relay whose state Smart Sync / Opposite read.
 void send_onoff_action_to_bindings(uint8_t endpoint, uint8_t action,
                                    uint8_t relay_index) {
     if (hal_zigbee_get_network_status() != HAL_ZIGBEE_NETWORK_JOINED) {
@@ -317,7 +315,8 @@ void switch_cluster_binding_action_off(zigbee_switch_cluster *cluster) {
                                   cluster->relay_index);
 }
 
-void switch_cluster_level_stop(zigbee_switch_cluster *cluster) {
+void switch_cluster_level_stop(zigbee_switch_cluster *cluster,
+                               zigbee_switch_long_cluster *long_cluster) {
     if (hal_zigbee_get_network_status() != HAL_ZIGBEE_NETWORK_JOINED) {
         return;
     }
@@ -325,9 +324,20 @@ void switch_cluster_level_stop(zigbee_switch_cluster *cluster) {
     hal_zigbee_cmd c = build_level_stop_cmd(cluster->endpoint,
                                             ZCL_CMD_LEVEL_STOP_WITH_ON_OFF);
     hal_zigbee_send_cmd_to_bindings(&c);
+
+    if (long_cluster != NULL) {
+        uint8_t stop_cmd =
+            (long_cluster->move_command == ZCL_CMD_LEVEL_MOVE_WITH_ON_OFF)
+                ? ZCL_CMD_LEVEL_STOP_WITH_ON_OFF
+                : ZCL_CMD_LEVEL_STOP;
+        hal_zigbee_cmd long_c = build_level_stop_cmd(long_cluster->endpoint,
+                                                     stop_cmd);
+        hal_zigbee_send_cmd_to_bindings(&long_c);
+    }
 }
 
-void switch_cluster_level_control(zigbee_switch_cluster *cluster) {
+void switch_cluster_level_control(zigbee_switch_cluster *cluster,
+                                  zigbee_switch_long_cluster *long_cluster) {
     if (hal_zigbee_get_network_status() != HAL_ZIGBEE_NETWORK_JOINED) {
         return;
     }
@@ -337,6 +347,18 @@ void switch_cluster_level_control(zigbee_switch_cluster *cluster) {
                                             cluster->level_move_direction,
                                             cluster->level_move_rate);
     hal_zigbee_send_cmd_to_bindings(&c);
+
+    if (long_cluster != NULL) {
+        uint8_t direction =
+            (long_cluster->level_move_direction == ZCL_LEVEL_MOVE_DIRECTION_ALTERNATE)
+                ? cluster->level_move_direction
+                : long_cluster->level_move_direction;
+        hal_zigbee_cmd long_c = build_level_move_cmd(long_cluster->endpoint,
+                                                     long_cluster->move_command,
+                                                     direction,
+                                                     long_cluster->level_move_rate);
+        hal_zigbee_send_cmd_to_bindings(&long_c);
+    }
 
     if (cluster->level_move_direction == ZCL_LEVEL_MOVE_DOWN) {
         cluster->level_move_direction = ZCL_LEVEL_MOVE_UP;
@@ -406,7 +428,7 @@ void switch_cluster_on_button_release(zigbee_switch_cluster *cluster) {
         }
     } else {
         // This is end of long press, send zcl_level stop
-        switch_cluster_level_stop(cluster);
+        switch_cluster_level_stop(cluster, get_long_press_cluster(cluster));
     }
 
     cluster->multistate_state = MULTISTATE_NOT_PRESSED;
@@ -439,8 +461,12 @@ void switch_cluster_on_button_long_press(zigbee_switch_cluster *cluster) {
         send_onoff_action_to_bindings(cluster->endpoint, cluster->action,
                                       cluster->relay_index);
     }
+    if (long_cluster != NULL) {
+        send_onoff_action_to_bindings(long_cluster->endpoint, long_cluster->action,
+                                      long_cluster->relay_index);
+    }
 
-    switch_cluster_level_control(cluster);
+    switch_cluster_level_control(cluster, long_cluster);
 
     cluster->multistate_state = MULTISTATE_LONG_PRESS;
     hal_zigbee_notify_attribute_changed(cluster->endpoint,

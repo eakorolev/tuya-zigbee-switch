@@ -172,6 +172,43 @@ def test_binding_commands_still_sent_long_deprecated(
 
 
 @pytest.mark.parametrize(
+    "action,expected_cmd",
+    [
+        pytest.param(
+            ZCL_ONOFF_CONFIGURATION_SWITCH_ACTION_TOGGLE_SIMPLE,
+            ZCL_CMD_ONOFF_TOGGLE,
+            id="toggle",
+        ),
+        pytest.param(
+            ZCL_ONOFF_CONFIGURATION_SWITCH_ACTION_ONOFF,
+            ZCL_CMD_ONOFF_ON,
+            id="on"
+        ),
+        pytest.param(
+            ZCL_ONOFF_CONFIGURATION_SWITCH_ACTION_OFFON,
+            ZCL_CMD_ONOFF_OFF,
+            id="off"
+        ),
+    ],
+)
+def test_binding_commands_still_sent_on_long_press(
+    device: Device,
+    button_pins: list[str],
+    action: int,
+    expected_cmd: int,
+):
+    """Long-press emits the right OnOff command via long_press_ep — switch_ep
+    stays at the default and does not participate in the long-press."""
+    long_press_endpoint = 3  # 2 switches + 0 relays => long_press_eps at ep3, ep4
+    device.zcl_switch_mode_set(1, ZCL_ONOFF_CONFIGURATION_SWITCH_TYPE_MOMENTARY)
+    device.zcl_switch_actions_set(long_press_endpoint, action)
+    device.set_network(1)
+    device.clear_events()
+    device.long_click_button(button_pins[0], duration_ms=1000)
+    device.wait_for_cmd_send(long_press_endpoint, ZCL_CLUSTER_ON_OFF, expected_cmd)
+
+
+@pytest.mark.parametrize(
     "action",
     [
         pytest.param(ZCL_ONOFF_CONFIGURATION_SWITCH_ACTION_TOGGLE_SMART_SYNC, id="sync"),
@@ -230,6 +267,27 @@ def test_smart_sync_degrades_to_toggle_long_deprecated(
     device.clear_events()
     device.long_click_button(button_pins[0], duration_ms=1000)
     device.wait_for_cmd_send(1, ZCL_CLUSTER_ON_OFF, ZCL_CMD_ONOFF_TOGGLE)
+
+
+@pytest.mark.parametrize(
+    "action",
+    [
+        pytest.param(ZCL_ONOFF_CONFIGURATION_SWITCH_ACTION_TOGGLE_SMART_SYNC, id="sync"),
+        pytest.param(ZCL_ONOFF_CONFIGURATION_SWITCH_ACTION_TOGGLE_SMART_OPPOSITE, id="opposite"),
+    ],
+)
+def test_smart_sync_degrades_to_toggle_on_long_press(
+    device: Device, button_pins: list[str], action: int,
+):
+    """Without a valid relay, long_press_ep SmartSync/SmartOpposite falls back
+    to plain Toggle on long-press."""
+    long_press_endpoint = 3  # 2 switches + 0 relays => long_press_eps at ep3, ep4
+    device.zcl_switch_mode_set(1, ZCL_ONOFF_CONFIGURATION_SWITCH_TYPE_MOMENTARY)
+    device.zcl_switch_actions_set(long_press_endpoint, action)
+    device.set_network(1)
+    device.clear_events()
+    device.long_click_button(button_pins[0], duration_ms=1000)
+    device.wait_for_cmd_send(long_press_endpoint, ZCL_CLUSTER_ON_OFF, ZCL_CMD_ONOFF_TOGGLE)
 
 
 def test_extra_switches_are_detached_when_relays_are_missing():
