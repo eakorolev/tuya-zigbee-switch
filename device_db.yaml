@@ -3462,7 +3462,7 @@ REMOTE_MOES_SWITCH_TS0044:
   tuya_module: ZT3L
   mcu_family: Telink
   mcu: TLSR8258
-  config_str: zgyzgdua;TS0044-MOES;SD2d;IC4i;SC3d;IA0i;SC2d;ID7i;SB4d;ID4i;BTC5;M;
+  config_str: zgyzgdua;TS0044-MOES;SD2d;IC4i;SC3d;IA0i;SC2d;ID7i;SB4d;ID4i;BTC5;M;D0;
   alt_config_str: null
   old_manufacturer_names: null
   old_zb_models: null
