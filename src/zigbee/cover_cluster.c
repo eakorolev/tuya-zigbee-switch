@@ -138,7 +138,8 @@ void cover_update_position(zigbee_cover_cluster *cluster) {
         cluster->position = new_cover_pos;
         hal_zigbee_notify_attribute_changed(cluster->endpoint,
                                             ZCL_CLUSTER_WINDOW_COVERING,
-                                            ZCL_ATTR_WINDOW_COVERING_CURRENT_POSITION_LIFT_PERCENTAGE);
+                                            ZCL_ATTR_WINDOW_COVERING_CURRENT_POSITION_LIFT_PERCENTAGE,
+                                            false);
     }
 }
 
@@ -226,7 +227,7 @@ void cover_execute_action(zigbee_cover_cluster *cluster, cover_action_t action) 
         cluster->moving           = ZCL_ATTR_WINDOW_COVERING_MOVING_STOPPED;
         hal_zigbee_notify_attribute_changed(cluster->endpoint,
                                             ZCL_CLUSTER_WINDOW_COVERING,
-                                            ZCL_ATTR_WINDOW_COVERING_MOVING);
+                                            ZCL_ATTR_WINDOW_COVERING_MOVING, false);
         return;
     }
 
@@ -252,7 +253,7 @@ void cover_execute_action(zigbee_cover_cluster *cluster, cover_action_t action) 
         cluster->moving           = direction;
         hal_zigbee_notify_attribute_changed(cluster->endpoint,
                                             ZCL_CLUSTER_WINDOW_COVERING,
-                                            ZCL_ATTR_WINDOW_COVERING_MOVING);
+                                            ZCL_ATTR_WINDOW_COVERING_MOVING, false);
     }
 
     cluster->target_motor_position = action;
@@ -265,7 +266,8 @@ void cover_execute_action(zigbee_cover_cluster *cluster, cover_action_t action) 
         cluster->position = (direction == ZCL_ATTR_WINDOW_COVERING_MOVING_OPENING) ? 100 : 0;
         hal_zigbee_notify_attribute_changed(cluster->endpoint,
                                             ZCL_CLUSTER_WINDOW_COVERING,
-                                            ZCL_ATTR_WINDOW_COVERING_CURRENT_POSITION_LIFT_PERCENTAGE);
+                                            ZCL_ATTR_WINDOW_COVERING_CURRENT_POSITION_LIFT_PERCENTAGE,
+                                            false);
         hal_tasks_schedule(&cluster->stop_task, MANUAL_MODE_TIMEOUT_MS);
         return;
     }
@@ -305,7 +307,8 @@ void cover_auto_stop_handler(void *arg) {
         cluster->position = new_cover_pos;
         hal_zigbee_notify_attribute_changed(cluster->endpoint,
                                             ZCL_CLUSTER_WINDOW_COVERING,
-                                            ZCL_ATTR_WINDOW_COVERING_CURRENT_POSITION_LIFT_PERCENTAGE);
+                                            ZCL_ATTR_WINDOW_COVERING_CURRENT_POSITION_LIFT_PERCENTAGE,
+                                            false);
     }
 }
 
