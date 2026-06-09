@@ -14,6 +14,11 @@ class RelayMode(t.enum8):
     LongPress = 0x02
     ShortPress = 0x03
 
+
+class LongPressRelayMode(t.enum8):
+    Detached = 0x00
+    LongPress = 0x02
+
 class BindedMode(t.enum8):
     PressStart = 0x01
     LongPress = 0x02
@@ -43,6 +48,17 @@ class CoverSwitchMode(t.enum8):
     ShortPress = 0x01
     LongPress = 0x02
     Hybrid = 0x03
+
+
+class LevelMoveCommand(t.enum8):
+    Move = 0x01
+    MoveWithOnOff = 0x05
+
+
+class LevelMoveDirection(t.enum8):
+    Up = 0x00
+    Down = 0x01
+    Alternate = 0xff
 
 
 class CustomOnOffConfigurationCluster(CustomCluster, OnOffConfiguration):
@@ -88,6 +104,20 @@ class CustomOnOffConfigurationCluster(CustomCluster, OnOffConfiguration):
         binded_mode = ZCLAttributeDef(
             id=0xff05,
             type=BindedMode,
+            access="rw",
+            is_manufacturer_specific=False,
+        )
+
+        level_move_direction = ZCLAttributeDef(
+            id=0xff08,
+            type=LevelMoveDirection,
+            access="rw",
+            is_manufacturer_specific=False,
+        )
+
+        move_command = ZCLAttributeDef(
+            id=0xff09,
+            type=LevelMoveCommand,
             access="rw",
             is_manufacturer_specific=False,
         )
@@ -430,7 +460,7 @@ CONFIGS = [
     "5e235jpa;TS0042-MA;SA0u;ID0i;SA3u;IC0i;BTA0;M;",
     "gbm10jnj;TS0043-MA;SA0u;ID0i;SA4u;IC1i;SA3u;IC0i;BTA0;M;",
     "a4xycprs;TS0044-MA;SA0u;ID0i;SA4u;IC1i;SA3u;IC0i;SB0u;ID1i;BTA0;M;",
-    "zgyzgdua;TS0044-MOES;SD2d;IC4i;SC3d;IA0i;SC2d;ID7i;SB4d;ID4i;BTC5;M;",
+    "zgyzgdua;TS0044-MOES;SD2d;IC4i;SC3d;IA0i;SC2d;ID7i;SB4d;ID4i;BTC5;M;D0;",
     "mrpevh8p;TS0041-TB;BB4d;SB5u;ID2;BTB5;M;",
     "yj6k7vfo;TS0041-TB2;SC3u;IB4i;BTB5;M;",
     "itb0omhv;TS0041-MOES;SC2u;IC4;BTC2;M;",
@@ -504,6 +534,11 @@ CONFIGS = [
     "bmzfjnbp;TS0011-MHB;SA4u;RD1D0;IA6i;M;",
     "ugaem1nb;TS0012-MHB;SA3u;RD1D0;IB1i;SB0u;RC2A0;IA5i;M;",
     "snq47izk;TS0013-MHB;SA3u;RD1D0;IB1i;SA4u;RC2A0;IA6i;SB0u;RC0C1;IA5i;M;",
+    "gsqxcwqr;TS0001-MIL;BC0u;LA0i;SC0u;RB4;IC4i;",
+    "ybjqjsuz;TS0002-YBJ;LA0i;SB6u;RB4;IA1i;SD3u;RD2;ID4i;",
+    "ybjqjsuz;TS0003-YBJ;LA0i;SB6u;RB4;IA1i;SC0u;RD2;IC4i;SD3u;RC3;ID4i;",
+    "ybjqjsuz;TS0003-YBJ;LA0i;SB6u;RB4;IA1i;SC0u;RD2;IC4i;SD3u;RC3;ID4i;",
+    "03vs3ks5;TS0004-MIL;LA0i;SB6u;RC2;IA1i;SC0u;RC3;IC4i;SD7u;RD2;IC1i;SD3u;RB4;ID4i;",
     "hhiodade;Moes-1-gang;SC1u;RB5;ID7;M;",
     "hhiodade;Moes-1-gang-ED;SC1u;RB5;ID7;M;",
     "Moes-1-gang;Moes-1-gang;SC1u;RB5;ID7;M;",
@@ -648,7 +683,7 @@ for config in CONFIGS:
                 attribute_converter = lambda x: {0: "released", 1: "press", 2: "long_press", 3: "position_on", 4: "position_off"}[int(x)]
             )
         )
-    for endpoint_id in range(switch_cnt + 1, switch_cnt + indicators_cnt + 1):
+    for endpoint_id in range(switch_cnt + 1, switch_cnt + min(relay_cnt, indicators_cnt) + 1):
         builder = (
             builder
             .removes(OnOff.cluster_id, cluster_type=ClusterType.Client, endpoint_id=endpoint_id)
@@ -805,4 +840,81 @@ for config in CONFIGS:
             )
         )
 
-    builder.add_to_registry()
+    long_press_start = switch_cnt + relay_cnt + cover_switch_cnt + cover_cnt + 1
+
+    if switch_cnt > 0:
+        legacy_builder = builder.clone(omit_man_model_data=False)
+        legacy_builder.filter(
+            lambda d, ep=long_press_start: ep not in d.endpoints
+        )
+        legacy_builder.add_to_registry()
+
+        for endpoint_id in range(long_press_start, long_press_start + switch_cnt):
+            builder = (
+                builder
+                .removes(OnOffConfiguration.cluster_id, cluster_type=ClusterType.Client, endpoint_id=endpoint_id)
+                .adds(CustomOnOffConfigurationCluster, endpoint_id=endpoint_id)
+                .enum(
+                    CustomOnOffConfigurationCluster.AttributeDefs.switch_actions.name,
+                    SwitchActions,
+                    CustomOnOffConfigurationCluster.cluster_id,
+                    translation_key="long_press_switch_actions_"+str(endpoint_id),
+                    fallback_name="Long press switch actions "+str(endpoint_id),
+                    endpoint_id=endpoint_id,
+                    entity_type=EntityType.CONFIG,
+                )
+                .enum(
+                    CustomOnOffConfigurationCluster.AttributeDefs.relay_mode.name,
+                    LongPressRelayMode,
+                    CustomOnOffConfigurationCluster.cluster_id,
+                    translation_key="long_press_relay_mode_"+str(endpoint_id),
+                    fallback_name="Long press relay mode "+str(endpoint_id),
+                    endpoint_id=endpoint_id,
+                    entity_type=EntityType.CONFIG,
+                )
+                .number(
+                    CustomOnOffConfigurationCluster.AttributeDefs.relay_index.name,
+                    CustomOnOffConfigurationCluster.cluster_id,
+                    translation_key="long_press_relay_index_"+str(endpoint_id),
+                    fallback_name="Long press relay index "+str(endpoint_id),
+                    min_value=1,
+                    max_value=relay_cnt,
+                    step=1,
+                    endpoint_id=endpoint_id,
+                    entity_type=EntityType.CONFIG,
+                )
+                .enum(
+                    CustomOnOffConfigurationCluster.AttributeDefs.move_command.name,
+                    LevelMoveCommand,
+                    CustomOnOffConfigurationCluster.cluster_id,
+                    translation_key="long_press_move_command_"+str(endpoint_id),
+                    fallback_name="Long press move command "+str(endpoint_id),
+                    endpoint_id=endpoint_id,
+                    entity_type=EntityType.CONFIG,
+                )
+                .enum(
+                    CustomOnOffConfigurationCluster.AttributeDefs.level_move_direction.name,
+                    LevelMoveDirection,
+                    CustomOnOffConfigurationCluster.cluster_id,
+                    translation_key="long_press_level_move_direction_"+str(endpoint_id),
+                    fallback_name="Long press level move direction "+str(endpoint_id),
+                    endpoint_id=endpoint_id,
+                    entity_type=EntityType.CONFIG,
+                )
+                .number(
+                    CustomOnOffConfigurationCluster.AttributeDefs.level_move_rate.name,
+                    CustomOnOffConfigurationCluster.cluster_id,
+                    translation_key="long_press_level_move_rate_"+str(endpoint_id),
+                    fallback_name="Long press level move rate "+str(endpoint_id),
+                    min_value=1,
+                    max_value=255,
+                    step=1,
+                    endpoint_id=endpoint_id,
+                    entity_type=EntityType.CONFIG,
+                )
+            )
+
+        builder.filter(lambda d, ep=long_press_start: ep in d.endpoints)
+        builder.add_to_registry()
+    else:
+        builder.add_to_registry()
