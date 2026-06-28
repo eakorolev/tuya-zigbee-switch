@@ -415,6 +415,7 @@ CONFIGS = [
     "ko6v90pg;TS011F-BS-PM-1;LC4i;SB4u;RB5;IB1i;M;",
     "4ux0ondb;TS011F-BS-PM-2;LB4;SB5u;RD2;IC3;M;",
     "o1jzcxou;TS011F-BS;LC2;SB4u;RC3;ID2;M;",
+    "bep7ccew;TS011F-MG;LB4;SC3u;RD7;IC4;SD4u;RD2;IC0;M;",
     "ss98ec5d;TS011F-MOES;SB7d;RD2;IB1;M;",
     "vddauzhn;TS011F-TPM;SB4U;RB5;IC4i;M;",
     "gvn91tmx;TS011F-AB-PM;SC4u;RB5;ID2i;M;",
@@ -504,6 +505,11 @@ CONFIGS = [
     "bmzfjnbp;TS0011-MHB;SA4u;RD1D0;IA6i;M;",
     "ugaem1nb;TS0012-MHB;SA3u;RD1D0;IB1i;SB0u;RC2A0;IA5i;M;",
     "snq47izk;TS0013-MHB;SA3u;RD1D0;IB1i;SA4u;RC2A0;IA6i;SB0u;RC0C1;IA5i;M;",
+    "gsqxcwqr;TS0001-MIL;BC0u;LA0i;SC0u;RB4;IC4i;",
+    "ybjqjsuz;TS0002-YBJ;LA0i;SB6u;RB4;IA1i;SD3u;RD2;ID4i;",
+    "ybjqjsuz;TS0003-YBJ;LA0i;SB6u;RB4;IA1i;SC0u;RD2;IC4i;SD3u;RC3;ID4i;",
+    "ybjqjsuz;TS0003-YBJ;LA0i;SB6u;RB4;IA1i;SC0u;RD2;IC4i;SD3u;RC3;ID4i;",
+    "03vs3ks5;TS0004-MIL;LA0i;SB6u;RC2;IA1i;SC0u;RC3;IC4i;SD7u;RD2;IC1i;SD3u;RB4;ID4i;",
     "hhiodade;Moes-1-gang;SC1u;RB5;ID7;M;",
     "hhiodade;Moes-1-gang-ED;SC1u;RB5;ID7;M;",
     "Moes-1-gang;Moes-1-gang;SC1u;RB5;ID7;M;",
@@ -526,7 +532,12 @@ CONFIGS = [
     "mufwv0ry;TS0002-PS;LC2;SA3u;RA4;IC0;SB1u;RD1;IC1;M;",
     "mufwv0ry;T442;LC2;SA3u;RA4;IC0;SB1u;RD1;IC1;M;",
     "lsunm46z;TS0003-PS;LC2;SA3u;RA4;IC0;SA6u;RB0;IA0;SB1u;RD1;IC1;M;",
-    "b7s7xsow;TS0001-TA;BC0u;RC2;IC3;",
+    "b7s7xsow;TS0001-TA;SC2u;RC3;IB1;M;",
+    "ehgouyvu;TS0001-TA1;SC2u;RC3;IB1;M;",
+    "aa5t61rh;TS0002-TA;SA0u;RB4;ID7;SB7u;RB5;ID2;M;",
+    "rhkfbfcv;TS0003-TA;SA0u;RB4;ID7;SC2u;RC3;IB1;SB7u;RB5;ID2;M;",
+    "zcbpj2t6;TS0003-TA1;SA0u;RB4;ID7;SC2u;RC3;IB1;SB7u;RB5;ID2;M;",
+    "vit9k2nb;TS0004-TA;SA0u;RB4;IB1;SC4u;RD2;IB7;SC2u;RB5;ID4;SC3u;RD7;IC0;M;",
     "u6ocpapf;TS0001-CUS;LB1;SC3u;RD2;M;",
     "gbdxbmwz;TS0004-CUS;LB1;SC3u;RD2;SD7u;RB5;SC2u;RB4;SB7u;RC0;M;",
     "ehgouyvu;TS0001-LS;SC2u;RC3;IB1;",
@@ -648,7 +659,7 @@ for config in CONFIGS:
                 attribute_converter = lambda x: {0: "released", 1: "press", 2: "long_press", 3: "position_on", 4: "position_off"}[int(x)]
             )
         )
-    for endpoint_id in range(switch_cnt + 1, switch_cnt + indicators_cnt + 1):
+    for endpoint_id in range(switch_cnt + 1, switch_cnt + min(relay_cnt, indicators_cnt) + 1):
         builder = (
             builder
             .removes(OnOff.cluster_id, cluster_type=ClusterType.Client, endpoint_id=endpoint_id)

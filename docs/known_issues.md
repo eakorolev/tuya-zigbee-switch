@@ -9,6 +9,7 @@
 - Switch randomly toggles on TLSR8253 512KB devices ([#289](https://github.com/romasku/tuya-zigbee-switch/issues/289))
   (HOBEIAN and Zbeacon)
 - *Power-on behavior* doesn't fully work on some devices
+- Press event missing on very short single presses ([#438](https://github.com/romasku/tuya-zigbee-switch/issues/438))
 - Telink Router sometimes unavailable? ([#255](https://github.com/romasku/tuya-zigbee-switch/issues/255))
 - *momentary_nc* not working after power loss.  
   (Apply the setting again)
