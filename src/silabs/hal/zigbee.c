@@ -155,6 +155,16 @@ void hal_zigbee_notify_attribute_changed(uint8_t endpoint, uint16_t cluster_id,
     if (attr == NULL) {
         return;
     }
+
+    if (immediate) {
+        // Send report directly; the reporting plugin defers to its tick and
+        // drops the event when the coordinator has not configured reporting.
+        hal_zigbee_send_report_attr(endpoint, cluster_id, attribute_id,
+                                    attr->data_type_id, attr->value,
+                                    attr->size);
+        return;
+    }
+
     sl_zigbee_af_reporting_attribute_change_cb(
         endpoint, cluster_id, attribute_id,
         cluster->is_server ? CLUSTER_MASK_SERVER : CLUSTER_MASK_CLIENT, 0,
