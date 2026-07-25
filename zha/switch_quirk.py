@@ -14,6 +14,11 @@ class RelayMode(t.enum8):
     LongPress = 0x02
     ShortPress = 0x03
 
+
+class LongPressRelayMode(t.enum8):
+    Detached = 0x00
+    LongPress = 0x02
+
 class BindedMode(t.enum8):
     PressStart = 0x01
     LongPress = 0x02
@@ -43,6 +48,17 @@ class CoverSwitchMode(t.enum8):
     ShortPress = 0x01
     LongPress = 0x02
     Hybrid = 0x03
+
+
+class LevelMoveCommand(t.enum8):
+    Move = 0x01
+    MoveWithOnOff = 0x05
+
+
+class LevelMoveDirection(t.enum8):
+    Up = 0x00
+    Down = 0x01
+    Alternate = 0xff
 
 
 class CustomOnOffConfigurationCluster(CustomCluster, OnOffConfiguration):
@@ -88,6 +104,20 @@ class CustomOnOffConfigurationCluster(CustomCluster, OnOffConfiguration):
         binded_mode = ZCLAttributeDef(
             id=0xff05,
             type=BindedMode,
+            access="rw",
+            is_manufacturer_specific=False,
+        )
+
+        level_move_direction = ZCLAttributeDef(
+            id=0xff08,
+            type=LevelMoveDirection,
+            access="rw",
+            is_manufacturer_specific=False,
+        )
+
+        move_command = ZCLAttributeDef(
+            id=0xff09,
+            type=LevelMoveCommand,
             access="rw",
             is_manufacturer_specific=False,
         )
@@ -239,10 +269,10 @@ CONFIGS = [
     "nuenzetq1;TS0002-SC;LC3i;SD7u;RD4;SC0u;RA0;M;",
     "TUYA;DEV-ZTU2;LD7;SA0u;RC1;IB6;M;",
     "vbfp8eyv;TS011F-TD;LC4i;SC1u;RD4;IB6i;M;",
-    "46t1rvdu;WHD02-Aubess;BC4u;LD2;SB4u;RB5;",
-    "46t1rvdu;WHD02-Aubess-ED;BC4u;LD2;SB4u;RB5;",
-    "WHD02-Aubess;WHD02-Aubess;BC4u;LD2;SB4u;RB5;",
-    "WHD02-Aubess;WHD02-Aubess-ED;BC4u;LD2;SB4u;RB5;",
+    "46t1rvdu;WHD02-Aubess;BC4u;LD2i;SB4u;RB5;",
+    "46t1rvdu;WHD02-Aubess-ED;BC4u;LD2i;SB4u;RB5;",
+    "WHD02-Aubess;WHD02-Aubess;BC4u;LD2i;SB4u;RB5;",
+    "WHD02-Aubess;WHD02-Aubess-ED;BC4u;LD2i;SB4u;RB5;",
     "lmlsduws;TS0002-AUB;BC4u;LB1;SC2u;RB7;SC3u;RB4;",
     "lvhy15ix;TS0003-AUB;BC4u;LB1;SC2u;RB7;SC3u;RB4;SD2u;RB5;",
     "mmkbptmx;TS0004-custom;BB6u;LB1;SC1u;RB7;SC2u;RB5;SC3u;RB4;SD2u;RC4;",
@@ -332,6 +362,8 @@ CONFIGS = [
     "q6a3tepg;TS0001-HOB1;BB1u;LD4i;SB6u;RA1;",
     "ZG-301Z;TS0001-HOB;BB1u;LD4i;SB6u;RA1;",
     "tw4ztbp4;TS0011-HOMMYN;BA0u;LD7;SC2u;RB5;",
+    "5gey1ohx;Hommyn-RLZBN02;BA0u;LC0;SB4u;RC2;SB5u;RC3;",
+    "0e6uvexf;Hommyn-2;BA0f;LD7;SC2f;RB5;SC3f;RB4;M;",
     "pgq7ormg;TS0001-IHS;BC3u;LC2i;SB5u;RD2;",
     "mhhxxjrs;TS0003-IHS;BC3u;LC2i;SD7u;RD2;SB4u;RD3;SB5u;RC0;",
     "mhhxxjrs;TS0003-3CH-cus;BC3u;LC2i;SD7u;RD2;SB4u;RD3;SB5u;RC0;",
@@ -355,6 +387,8 @@ CONFIGS = [
     "c8wtsv3p;MS105-ZB-CUSTOM;BC2u;LD2i;SD3u;RD7;",
     "sonoff;ZBMINIL2-custom;BA0u;LC5i;SA6u;RA5A4;",
     "npzfdcof;TS0001-TLED;BD2u;LC3i;SB5u;RB4;",
+    "n1j44rth;TS0002-N1J44RTH;BB4u;LD2i;SC2u;RC4;SC3u;RB5;",
+    "uwhjgngj;TS0003-UWHJGNGJ;BB1u;LB7i;SC2u;RB4;SC3u;RB5;SD2u;RC4;",
     "rfexs4vs;TS0001-C;BA0u;LC0;SB4u;RC2;",
     "khmapq4n;TS0001-SB;BA0u;LC0;SB4u;RC2;",
     "zbfya6h0;TS0002-C;BA0u;LC0;SB4u;RC2;SB5u;RC3;",
@@ -431,7 +465,7 @@ CONFIGS = [
     "5e235jpa;TS0042-MA;SA0u;ID0i;SA3u;IC0i;BTA0;M;",
     "gbm10jnj;TS0043-MA;SA0u;ID0i;SA4u;IC1i;SA3u;IC0i;BTA0;M;",
     "a4xycprs;TS0044-MA;SA0u;ID0i;SA4u;IC1i;SA3u;IC0i;SB0u;ID1i;BTA0;M;",
-    "zgyzgdua;TS0044-MOES;SD2d;IC4i;SC3d;IA0i;SC2d;ID7i;SB4d;ID4i;BTC5;M;",
+    "zgyzgdua;TS0044-MOES;SD2d;IC4i;SC3d;IA0i;SC2d;ID7i;SB4d;ID4i;BTC5;M;D0;",
     "mrpevh8p;TS0041-TB;BB4d;SB5u;ID2;BTB5;M;",
     "yj6k7vfo;TS0041-TB2;SC3u;IB4i;BTB5;M;",
     "itb0omhv;TS0041-MOES;SC2u;IC4;BTC2;M;",
@@ -489,6 +523,7 @@ CONFIGS = [
     "xkxgfxsg;TS0726-1-BSL;LC3;SB5u;RC1;ID2;M;",
     "tlsvxhxc;TS0726-2-BSL;LB4;SC2u;RC0;ID2;SC3u;RB6;IA1;M;",
     "r2fgo9ks;TS0726-3-BS;LD4;SA1u;RB4;IC1;SC2u;RD2;IB5;SA0u;RC3;IB6;M;",
+    "p1h4zuvh;Girier-4-gang;SA0u;RC0;IC2;SA3u;RD1;IA6;SA4u;RB0;IA5;SB1u;RC1;ID0;M;",
     "ZG-302Z1;TS0001-HBS;IC1i;SC2u;RB5B4;M;",
     "bmqxalil;TS0001-HMT;LC2i;SA0u;RD2;M;",
     "in5qxhtt;TS0002-HMT;LC2i;SB4u;RD7;SD4u;RC3;M;",
@@ -498,6 +533,7 @@ CONFIGS = [
     "ju82pu2b;TS0003-IHS-T;LC4i;SC0u;RC2;SB4u;RC3;SB5u;RD2;M;",
     "dlp6yvs8;LerLink-2-gang;SA0u;RB4;ID7;SB7u;RB5;ID2;M;",
     "qp7x8u3a;LerLink-3-gang;SA0u;RB4;ID7;SC2u;RC3;IB1;SB7u;RB5;ID2;M;",
+    "sovlwiix;LerLink-4-gang;SB0u;RC2;IA5;SA0u;RC1;IA6;SA4u;RB1;ID0;SA3u;RC0;ID1;M;",
     "qa8s8vca;TS130F-LT;BD2u;LA0;XB5C3f;CC0C2;M;",
     "kea5qgnd;TS0011-MH;SC4u;RB4A0;ID2;M;",
     "toaaawnr;TS0012-MH;SC4u;RB4A0;ID2;SD7u;RD4B5;IC3;M;",
@@ -816,4 +852,81 @@ for config in CONFIGS:
             )
         )
 
-    builder.add_to_registry()
+    long_press_start = switch_cnt + relay_cnt + cover_switch_cnt + cover_cnt + 1
+
+    if switch_cnt > 0:
+        legacy_builder = builder.clone(omit_man_model_data=False)
+        legacy_builder.filter(
+            lambda d, ep=long_press_start: ep not in d.endpoints
+        )
+        legacy_builder.add_to_registry()
+
+        for endpoint_id in range(long_press_start, long_press_start + switch_cnt):
+            builder = (
+                builder
+                .removes(OnOffConfiguration.cluster_id, cluster_type=ClusterType.Client, endpoint_id=endpoint_id)
+                .adds(CustomOnOffConfigurationCluster, endpoint_id=endpoint_id)
+                .enum(
+                    CustomOnOffConfigurationCluster.AttributeDefs.switch_actions.name,
+                    SwitchActions,
+                    CustomOnOffConfigurationCluster.cluster_id,
+                    translation_key="long_press_switch_actions_"+str(endpoint_id),
+                    fallback_name="Long press switch actions "+str(endpoint_id),
+                    endpoint_id=endpoint_id,
+                    entity_type=EntityType.CONFIG,
+                )
+                .enum(
+                    CustomOnOffConfigurationCluster.AttributeDefs.relay_mode.name,
+                    LongPressRelayMode,
+                    CustomOnOffConfigurationCluster.cluster_id,
+                    translation_key="long_press_relay_mode_"+str(endpoint_id),
+                    fallback_name="Long press relay mode "+str(endpoint_id),
+                    endpoint_id=endpoint_id,
+                    entity_type=EntityType.CONFIG,
+                )
+                .number(
+                    CustomOnOffConfigurationCluster.AttributeDefs.relay_index.name,
+                    CustomOnOffConfigurationCluster.cluster_id,
+                    translation_key="long_press_relay_index_"+str(endpoint_id),
+                    fallback_name="Long press relay index "+str(endpoint_id),
+                    min_value=1,
+                    max_value=relay_cnt,
+                    step=1,
+                    endpoint_id=endpoint_id,
+                    entity_type=EntityType.CONFIG,
+                )
+                .enum(
+                    CustomOnOffConfigurationCluster.AttributeDefs.move_command.name,
+                    LevelMoveCommand,
+                    CustomOnOffConfigurationCluster.cluster_id,
+                    translation_key="long_press_move_command_"+str(endpoint_id),
+                    fallback_name="Long press move command "+str(endpoint_id),
+                    endpoint_id=endpoint_id,
+                    entity_type=EntityType.CONFIG,
+                )
+                .enum(
+                    CustomOnOffConfigurationCluster.AttributeDefs.level_move_direction.name,
+                    LevelMoveDirection,
+                    CustomOnOffConfigurationCluster.cluster_id,
+                    translation_key="long_press_level_move_direction_"+str(endpoint_id),
+                    fallback_name="Long press level move direction "+str(endpoint_id),
+                    endpoint_id=endpoint_id,
+                    entity_type=EntityType.CONFIG,
+                )
+                .number(
+                    CustomOnOffConfigurationCluster.AttributeDefs.level_move_rate.name,
+                    CustomOnOffConfigurationCluster.cluster_id,
+                    translation_key="long_press_level_move_rate_"+str(endpoint_id),
+                    fallback_name="Long press level move rate "+str(endpoint_id),
+                    min_value=1,
+                    max_value=255,
+                    step=1,
+                    endpoint_id=endpoint_id,
+                    entity_type=EntityType.CONFIG,
+                )
+            )
+
+        builder.filter(lambda d, ep=long_press_start: ep in d.endpoints)
+        builder.add_to_registry()
+    else:
+        builder.add_to_registry()
